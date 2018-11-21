@@ -1,0 +1,26 @@
+Fences:
+
+Fences (and resource barriers) are the only sync primitives.
+You can't discard resources if the GPU is using them.
+Fences are required for frame buffering
+You can only signal a fence at command list boundaries (not within).
+
+
+sgnal fence:
+ fence object, fence value
+ 
+Windows event handle for CPU side synchronization.
+Use cases:
+GPU -> GPU
+CPU -> GPU
+GPU -> CPU
+
+A fence is waited on by the GPU using the CommandQueue::Wait method.
+
+For a matrix:
+D3D12_INPUT_ELEMENT_DESC input_layout[] = {
+	{"MATRIX", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	{"MATRIX", 1, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	{"MATRIX", 2, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	{"MATRIX", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+};
