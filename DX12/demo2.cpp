@@ -38,61 +38,28 @@ struct Vertex
 	XMFLOAT2 Color;
 };
 
-static Vertex g_vertices[8] = {
+static Vertex g_vertices[4] = {
 	Vertex{
-		XMFLOAT3(-1.0f, -1.0f, -1.0f),
-		XMFLOAT2(-0.0f, -0.0f)
+		XMFLOAT3(-1.0f, +1.0f, +0.0f),
+		XMFLOAT2(+0.0f, +1.0f)
 	},
 	Vertex{
-		XMFLOAT3(-1.0f, +1.0f, -1.0f),
-		XMFLOAT2(-0.0f, +1.0f)
+		XMFLOAT3(-1.0f, -1.0f, +0.0f),
+		XMFLOAT2(+0.0f, +0.0f)
 	},
 	Vertex{
-		XMFLOAT3(+1.0f, +1.0f, -1.0f),
+		XMFLOAT3(+1.0f, -1.0f, +0.0f),
+		XMFLOAT2(+1.0f, +0.0f)
+	},
+	Vertex{
+		XMFLOAT3(+1.0f, +1.0f, +0.0f),
 		XMFLOAT2(+1.0f, +1.0f)
-	},
-	Vertex{
-		XMFLOAT3(+1.0f, -1.0f, -1.0f),
-		XMFLOAT2(+1.0f, -0.0f)
-	},
-	Vertex{
-		XMFLOAT3(-1.0f, -1.0f,  1.0f),
-		XMFLOAT2(-0.0f, -0.0f)
-	},
-	Vertex{
-		XMFLOAT3(-1.0f, +1.0f,  1.0f),
-		XMFLOAT2(-0.0f, +0.0f)
-	},
-	Vertex{
-		XMFLOAT3(+1.0f, +1.0f,  1.0f),
-		XMFLOAT2(+1.0f, +1.0f)
-	},
-	Vertex{
-		XMFLOAT3(+1.0f, -1.0f,  1.0f),
-		XMFLOAT2(+1.0f, -0.0f)
-	},
-
+	}
 };
 
-static XMFLOAT3 g_colors[8] = {
-	 XMFLOAT3(0.0f, 0.0f, 0.0f),
-	 XMFLOAT3(0.0f, 1.0f, 0.0f),
-	 XMFLOAT3(1.0f, 1.0f, 0.0f),
-	 XMFLOAT3(1.0f, 0.0f, 0.0f),
-	 XMFLOAT3(0.0f, 0.0f, 1.0f),
-	 XMFLOAT3(0.0f, 1.0f, 1.0f),
-	 XMFLOAT3(1.0f, 1.0f, 1.0f),
-	 XMFLOAT3(1.0f, 0.0f, 1.0f)
-};
-
-static WORD g_indicies[36] =
+static WORD g_indicies[6] =
 {
-	0, 1, 2, 0, 2, 3,
-	4, 6, 5, 4, 7, 6,
-	4, 5, 1, 4, 1, 0,
-	3, 2, 6, 3, 6, 7,
-	1, 5, 6, 1, 6, 2,
-	4, 0, 3, 4, 3, 7
+	2, 1, 0, 3, 2, 0
 };
 
 Demo2::Demo2(Application &arg_app, const std::wstring& arg_name, int arg_width, int arg_height, bool arg_v_sync)
@@ -359,7 +326,7 @@ bool Demo2::LoadContent()
 	D3D12_RESOURCE_DESC texture_desc;
 	UINT64 texture_width = 0, texture_height = 0;
 	DXGI_FORMAT texture_format;
-	int pixel_size = 0;
+	int pixel_size = 0; // in bytes
 	unsigned char * texture = LoadTexture("texture.png", texture_desc, texture_width, texture_height, texture_format, pixel_size);
 
 	device->CreateCommittedResource(
@@ -444,7 +411,7 @@ unsigned char * Demo2::LoadTexture(const char * path, D3D12_RESOURCE_DESC & reso
 									 &channels,
 									 STBI_rgb_alpha);
 
-	if (image == nullptr || channels < 4)
+	if (image == nullptr)
 	{
 		ThrowIfFailed(-1);
 	}
@@ -453,7 +420,7 @@ unsigned char * Demo2::LoadTexture(const char * path, D3D12_RESOURCE_DESC & reso
 	texture_height = height;
 
 	dxgi_format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	pixel_size = 4;
+	pixel_size = 4; // in bytes
 
 	resource_desc = {};
 	resource_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;

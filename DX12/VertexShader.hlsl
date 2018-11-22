@@ -19,7 +19,7 @@ VertexShaderOutput main(VertexPosColor IN)
 {
 	VertexShaderOutput OUT;
 
-	OUT.Position = mul(MVP, float4(IN.Position, 1.0f));
+	OUT.Position = float4(IN.Position, 1.0f);
 	OUT.pTexture = IN.vTexture;
 
 	return OUT;
