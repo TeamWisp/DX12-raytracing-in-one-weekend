@@ -179,8 +179,8 @@ MaterialHitRecord lambertian_scatter(Ray r, HitRecord rec_hit, MaterialOptions o
 	// Setup scattered ray
 	float3 target = rec_hit.p + rec_hit.normal + random_in_unit_sphere(randomizer);
 	Ray ray;
-	r.origin = rec_hit.p;
-	r.direction = target;
+	ray.origin = rec_hit.p;
+	ray.direction = target;
 	mat_hit.scatter_ray = ray;
 
 	// Set attenuation
@@ -261,13 +261,6 @@ ColorData color(HitableManager hit_manager, Ray r, float2 randomizer)
 			color_data.mat_hit = lambertian_scatter(r, rec, rec.mat, randomizer);
 		}
 
-		float3 target = rec.p + rec.normal + random_in_unit_sphere(randomizer);
-		Ray rebounce_ray;
-		rebounce_ray.origin = rec.p;
-		rebounce_ray.direction = target;
-
-		color_data.mat_hit.scatter_ray = rebounce_ray;
-
 		return color_data;
 	}
 	else
@@ -347,8 +340,6 @@ float4 main(VSOutput IN) : SV_Target
 		ColorData color_data = color(hitable_manager, r, randomizer);
 		float4 bounced_color = handleBounces(hitable_manager, color_data, randomizer, final_color);
 
-		//final_color += float4(color_data.color, 1.0);
-		//final_color += color_data.color;
 		final_color += bounced_color;
 
 		// Update randomizer		
