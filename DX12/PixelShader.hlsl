@@ -7,7 +7,7 @@
 #define MAX_SAMPLE_OFFSET 1.0
 #define SAMPLE_FACTOR (MAX_SAMPLE_OFFSET / 2.0)
 
-// ============================================================================
+// ================================== Shader Parameters ==========================================
 
 struct VSOutput
 {
@@ -17,14 +17,14 @@ struct VSOutput
 Texture2D t1 : register(t0);
 SamplerState s1 : register(s0);
 
-// ============================================================================
+// ====================================== Random ===================================
 
 float rand(float2 co)
 {
 	return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// ============================================================================
+// ==================================== Ray class =========================================
 
 struct Ray
 {
@@ -36,7 +36,7 @@ struct Ray
 	}
 };
 
-// ============================================================================
+// ================================== Camera class =========================================
 
 struct Camera
 {
@@ -62,7 +62,7 @@ struct Camera
 	}
 };
 
-// ============================================================================
+// ========================= HitRecord & Hitable Geometry classes =================================
 
 struct HitRecord
 {
@@ -78,7 +78,12 @@ struct HitableSphere
 	float radius;
 	HitRecord hit(Ray r, float t_min, float t_max)
 	{
+		// Initialize hit record
 		HitRecord hit_rec;
+		hit_rec.t = 0.0;
+		hit_rec.p = float3(0.0, 0.0, 0.0);
+		hit_rec.normal = float3(0.0, 1.0, 0.0);
+
 		// Check if ray hits sphere
 		float3 oc = r.origin - center;
 		float a = dot(r.direction, r.direction);
@@ -111,7 +116,7 @@ struct HitableSphere
 	}
 };
 
-// ============================================================================
+// ================================ Hitable Manager class ============================================
 
 struct HitableManager
 {
@@ -146,29 +151,90 @@ struct HitableManager
 
 HitableManager hitable_manager;
 
-// ============================================================================
+// ========================= Random unit in sphere function ===================================
 
-float3 color(Ray r)
+float3 random_in_unit_sphere(float2 randomizer)
 {
+	float3 p;
+	// Calculate random direction
+	p = (2.0 * 
+		float3(
+			rand(randomizer + float2(832.0, 0.0)), 
+			rand(randomizer + float2(0.0, 652.0)), 
+			rand(randomizer + float2(876.0, 324.0)))) -
+		float3(1, 1, 1);
+
+	return normalize(p);
+}
+
+// ================================= Color function =========================================
+
+struct ColorData
+{
+	float3 color;
+	Ray rebounce_ray;
+	bool rebounce;
+};
+
+ColorData color(Ray r, float2 randomizer)
+{
+	// Create color data to return
+	ColorData color_data;
+	color_data.rebounce = false;
+	color_data.color = float3(0.0, 0.0, 0.0);
+
+	// Create Hit record to record hit(s)
 	HitRecord rec;
 	rec.hit = false;
-	HitableSphere sphere;
-	sphere.center = float3(0,0,-1);
-	sphere.radius = 0.5;
-	rec = (hitable_manager.hit(r, 0.0, 3E+38));
+
+	// Run hit manager
+	rec = (hitable_manager.hit(r, 0.001, 3E+38));
+
+	// Check if hit was found
 	if (rec.hit)
 	{
-		return 0.5*float3(rec.normal.x+1, rec.normal.y+1, rec.normal.z+1);
+		// Create new ray for bounce
+		float3 target = rec.p + rec.normal + random_in_unit_sphere(randomizer);
+		Ray rebounce_ray;
+		rebounce_ray.origin = rec.p;
+		rebounce_ray.direction = target;
+
+		// Bounce and return final color
+		color_data.rebounce = true;
+		color_data.rebounce_ray = rebounce_ray;
+		color_data.color = float3(0.1, 0.1, 0.5);
+		return color_data;
 	}
 	else
 	{
+		// Ray didn't hit anything anymore
 		float3 n_dir = normalize(r.direction);
 		float t = 0.5 * (n_dir.y + 1.0);
-		return (1.0-t) * float3(1.0, 1.0, 1.0) + t * float3(0.5, 0.7, 1.0);
+
+		// No bounce and return final color
+		color_data.rebounce = false;
+		color_data.color = (1.0 - t) * float3(1.0, 1.0, 1.0) + t * float3(0.5, 0.7, 1.0);
+		return color_data;
 	}
+	// Return color data
 }
 
-// ============================================================================
+// =================================== MAIN ============================================
+
+float4 handleBounces(ColorData color_data, float2 randomizer, float4 final_color)
+{
+	final_color = float4(color_data.color.xyz, 1.0);
+
+	for (int i = 0; color_data.rebounce; i++)
+	{
+		randomizer += float2(812.0, 122.0);
+		final_color = final_color * 0.5;
+		color_data = color(color_data.rebounce_ray, randomizer);
+	}
+	return final_color;
+}
+
+// =================================== MAIN ============================================
 
 float4 main(VSOutput IN) : SV_Target
 {
@@ -201,12 +267,17 @@ float4 main(VSOutput IN) : SV_Target
 		Ray r = cam.get_ray(u, v);
 
 		// Get final color
-		final_color += float4(color(r), 1.0);
+		ColorData color_data = color(r, randomizer);
+		float4 bounced_color = handleBounces(color_data, randomizer, final_color);
+
+		//final_color += float4(color_data.color, 1.0);
+		final_color += bounced_color;
 
 		// Update randomizer		
 		randomizer += (float2(final_color.xy) * float2(final_color.x - final_color.y, final_color.y - final_color.x)) * 500.f;
 	}
 	final_color /= float4(MAX_SAMPLES, MAX_SAMPLES, MAX_SAMPLES, 1.0);
+	final_color = float4(sqrt(final_color.x), sqrt(final_color.y), sqrt(final_color.z), 1.0);
 
 	// render final color
 	return final_color;
