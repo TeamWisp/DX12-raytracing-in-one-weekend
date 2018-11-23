@@ -1,6 +1,14 @@
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 500
 
+#define NUM_SPHERES 2
+
+#define MAX_SAMPLES 100
+#define MAX_SAMPLE_OFFSET 1.0
+#define SAMPLE_FACTOR (MAX_SAMPLE_OFFSET / 2.0)
+
+// ============================================================================
+
 struct VSOutput
 {
 	float2 pTexture    : P_TEXTURECOORD;
@@ -9,13 +17,48 @@ struct VSOutput
 Texture2D t1 : register(t0);
 SamplerState s1 : register(s0);
 
+// ============================================================================
+
+float rand(float2 co)
+{
+	return frac(sin(dot(co.xy, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+// ============================================================================
+
 struct Ray
 {
 	float3 origin;
 	float3 direction;
 	float3 point_at(float t)
-	{ 
-		return origin + t*direction;
+	{
+		return origin + t * direction;
+	}
+};
+
+// ============================================================================
+
+struct Camera
+{
+	float3 origin;
+	float3 lower_left_corner;
+	float3 horizontal;
+	float3 vertical;
+
+	void init()
+	{
+		origin = float3(0.0, 0.0, 0.0);
+		lower_left_corner = float3(-2.0, -1.0, -1.0);
+		horizontal = float3(4.0, 0.0, 0.0);
+		vertical = float3(0.0, 2.0, 0.0);
+	}
+
+	Ray get_ray(float u, float v)
+	{
+		Ray r;
+		r.origin = origin;
+		r.direction = lower_left_corner + u * horizontal + v * vertical;
+		return r;
 	}
 };
 
@@ -68,7 +111,7 @@ struct HitableSphere
 	}
 };
 
-#define NUM_SPHERES 2
+// ============================================================================
 
 struct HitableManager
 {
@@ -86,7 +129,6 @@ struct HitableManager
 		// Check for hits
 		HitRecord hit_rec;
 		hit_rec.hit = false;
-		bool hit_anything = false;
 		float closest_so_far = t_max;
 		// Check spheres
 		for (int i = 0; i < NUM_SPHERES; ++i)
@@ -126,6 +168,8 @@ float3 color(Ray r)
 	}
 }
 
+// ============================================================================
+
 float4 main(VSOutput IN) : SV_Target
 {
 	// Setup general variables
@@ -142,17 +186,27 @@ float4 main(VSOutput IN) : SV_Target
 	float4 final_color = float4(0.0, 0.0, 0.0, 1.0);
 	float2 pixel_coords = float2(pixel_position.xy);
 
-	// Create ray
-	float3 lower_left_corner = float3(-2.0, -1.0, -1.0);
-	float3 horizontal = float3(4.0, 0.0, 0.0);
-	float3 vertical = float3(0.0, 2.0, 0.0);
+	// Create camera
+	Camera cam;
+	cam.init();
 
-	Ray r;
-	r.origin = float3(0.0, 0.0, 0.0);
-	r.direction = lower_left_corner + uv.x * horizontal + uv.y * vertical;
+	float2 randomizer = float2(rand(uv), rand(uv));
+	for (int s = 0; s < MAX_SAMPLES; ++s)
+	{
+		// Get slightly offset uv's
+		float u = float(pixel_coords.x + (SAMPLE_FACTOR - (rand(randomizer) * MAX_SAMPLE_OFFSET))) / float(WINDOW_WIDTH);
+		float v = float(pixel_coords.y + (SAMPLE_FACTOR - (rand(randomizer) * MAX_SAMPLE_OFFSET))) / float(WINDOW_HEIGHT);
 
-	// Get final color
-	final_color = float4(color(r), 1.0);
+		// Create Ray
+		Ray r = cam.get_ray(u, v);
+
+		// Get final color
+		final_color += float4(color(r), 1.0);
+
+		// Update randomizer		
+		randomizer += (float2(final_color.xy) * float2(final_color.x - final_color.y, final_color.y - final_color.x)) * 500.f;
+	}
+	final_color /= float4(MAX_SAMPLES, MAX_SAMPLES, MAX_SAMPLES, 1.0);
 
 	// render final color
 	return final_color;
