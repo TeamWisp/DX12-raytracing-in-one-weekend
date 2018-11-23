@@ -62,20 +62,93 @@ class Camera
 	}
 };
 
-// ================================= HitRecord class ==========================================
+// =================================== Material interface ====================================
 
-struct HitRecord
+interface iMaterial
 {
-	float3 p;
+
+};
+
+// ======================================= HitRecord =========================================
+
+class HitRecord
+{
+	bool lambertian;
+	Lambertian mat_lambert;
+
+	float3 p;git 
 	float3 normal;
 	float t;
 	bool hit;
+};
+
+// ====================================== Materials ===========================================
+
+struct MaterialRay
+{
+	Ray r;
+	float3 attenuation;
+	bool scattered;
+};
+
+class Lambertian : iMaterial
+{
+	float3 albedo;
+
+	MaterialRay scatter(Ray r, HitRecord hit_rec)
+	{
+		// Create MaterialRay
+		MaterialRay scattered_ray;
+
+		// Setup scattered ray
+		float3 target = hit_rec.p + hit_rec.normal + random_in_unit_sphere();
+		Ray ray;
+		r.origin = hit_rec.p;
+		r.direction = target;
+		scattered_ray.r = ray;
+
+		// Set attenuation
+		attenuation = albedo;
+
+		scattered_ray.scattered = true;
+
+		// Return scattered ray data
+		return scattered_ray;
+	}
+};
+
+class Metal : iMaterial
+{
+	float3 albedo;
+
+	MaterialRay scatter(Ray r, HitRecord hit_rec)
+	{
+		// Create MaterialRay
+		MaterialRay scattered_ray;
+
+		// Setup scattered ray
+		float3 reflected = reflect(normalize(r.direction), hit_rec.normal);
+		Ray ray;
+		r.origin = hit_rec.p;
+		r.direction = reflected;
+		scattered_ray.r = ray;
+
+		// Set attenuation
+		attenuation = albedo;
+
+		scattered_ray.scattered = (dot(ray.direction, rec_hit.normal) > 0);
+
+		// Return scattered ray data
+		return scattered_ray;
+	}
 };
 
 // ============================== Hitable Geometry classes ===================================
 
 class HitableSphere
 {
+	Lambertian mat;
+
 	float3 center;
 	float radius;
 	HitRecord hit(Ray r, float t_min, float t_max)
@@ -126,12 +199,17 @@ class HitableManager
 	{
 		// Hitable geometry
 		HitableSphere spheres[NUM_SPHERES];
+		Lambertian lam;
 
+		lam.albedo = float3(0.8, 0.3, 0.3);
 		spheres[0].center = float3(0.0, 0.0, -1.0);
 		spheres[0].radius = 0.5;
+		spheres[0].mat = lam;
 
+		lam.albedo = float3(0.8, 0.6, 0.2);
 		spheres[1].center = float3(0.0, -100.5, -10.0);
 		spheres[1].radius = 100.0;
+		spheres[1].mat = lam;
 
 		// Check for hits
 		HitRecord hit_rec;
