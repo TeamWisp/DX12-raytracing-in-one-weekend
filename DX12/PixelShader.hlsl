@@ -62,92 +62,53 @@ class Camera
 	}
 };
 
-// =================================== Material interface ====================================
+// ==================================== Material ==============================================
 
-interface iMaterial
+struct MaterialOptions
 {
+	// General variables
+	float3 albedo;
 
+	// MATERIAL TYPES
+	// Lambertian
+	bool lambert;
+	// Metal
+	bool metal;
 };
 
-// ======================================= HitRecord =========================================
-
-class HitRecord
+MaterialOptions create_material_options()
 {
-	bool lambertian;
-	Lambertian mat_lambert;
+	MaterialOptions options;
+	options.albedo = float3(0.0, 0.0, 0.0);
 
-	float3 p;git 
-	float3 normal;
-	float t;
-	bool hit;
-};
+	options.lambert = false;
+	options.metal = false;
+	return options;
+}
 
-// ====================================== Materials ===========================================
-
-struct MaterialRay
+struct MaterialHitRecord
 {
-	Ray r;
+	Ray scatter_ray;
 	float3 attenuation;
 	bool scattered;
 };
 
-class Lambertian : iMaterial
+// ================================= HitRecord class ==========================================
+
+struct HitRecord
 {
-	float3 albedo;
-
-	MaterialRay scatter(Ray r, HitRecord hit_rec)
-	{
-		// Create MaterialRay
-		MaterialRay scattered_ray;
-
-		// Setup scattered ray
-		float3 target = hit_rec.p + hit_rec.normal + random_in_unit_sphere();
-		Ray ray;
-		r.origin = hit_rec.p;
-		r.direction = target;
-		scattered_ray.r = ray;
-
-		// Set attenuation
-		attenuation = albedo;
-
-		scattered_ray.scattered = true;
-
-		// Return scattered ray data
-		return scattered_ray;
-	}
-};
-
-class Metal : iMaterial
-{
-	float3 albedo;
-
-	MaterialRay scatter(Ray r, HitRecord hit_rec)
-	{
-		// Create MaterialRay
-		MaterialRay scattered_ray;
-
-		// Setup scattered ray
-		float3 reflected = reflect(normalize(r.direction), hit_rec.normal);
-		Ray ray;
-		r.origin = hit_rec.p;
-		r.direction = reflected;
-		scattered_ray.r = ray;
-
-		// Set attenuation
-		attenuation = albedo;
-
-		scattered_ray.scattered = (dot(ray.direction, rec_hit.normal) > 0);
-
-		// Return scattered ray data
-		return scattered_ray;
-	}
+	MaterialOptions mat;
+	float3 p;
+	float3 normal;
+	float t;
+	bool hit;
 };
 
 // ============================== Hitable Geometry classes ===================================
 
 class HitableSphere
 {
-	Lambertian mat;
+	MaterialOptions mat;
 
 	float3 center;
 	float radius;
@@ -155,6 +116,7 @@ class HitableSphere
 	{
 		// Initialize hit record
 		HitRecord hit_rec;
+		hit_rec.mat = mat;
 		hit_rec.t = 0.0;
 		hit_rec.p = float3(0.0, 0.0, 0.0);
 		hit_rec.normal = float3(0.0, 1.0, 0.0);
@@ -191,26 +153,69 @@ class HitableSphere
 	}
 };
 
+// ========================= Random unit in sphere function ===================================
+
+float3 random_in_unit_sphere(float2 randomizer)
+{
+	float3 p;
+	// Calculate random direction
+	p = (2.0 *
+		 float3(
+		 rand(randomizer + float2(832.0, 0.0)),
+		 rand(randomizer + float2(0.0, 652.0)),
+		 rand(randomizer + float2(876.0, 324.0)))) -
+		float3(1, 1, 1);
+
+	return normalize(p);
+}
+
+// ================================== Material functions =============================================
+
+MaterialHitRecord lambertian_scatter(Ray r, HitRecord rec_hit, MaterialOptions options, float2 randomizer)
+{
+	// Create MaterialHitRecord
+	MaterialHitRecord mat_hit;
+
+	// Setup scattered ray
+	float3 target = rec_hit.p + rec_hit.normal + random_in_unit_sphere(randomizer);
+	Ray ray;
+	r.origin = rec_hit.p;
+	r.direction = target;
+	mat_hit.scatter_ray = ray;
+
+	// Set attenuation
+	mat_hit.attenuation = options.albedo;
+
+	mat_hit.scattered = true;
+
+	// Return scattered ray data
+	return mat_hit;
+}
+
 // ================================ Hitable Manager class ============================================
 
 class HitableManager
 {
-	HitRecord hit(Ray r, float t_min, float t_max)
-	{
-		// Hitable geometry
-		HitableSphere spheres[NUM_SPHERES];
-		Lambertian lam;
+	// Hitable geometry
+	HitableSphere spheres[NUM_SPHERES];
 
-		lam.albedo = float3(0.8, 0.3, 0.3);
+	void init()
+	{
 		spheres[0].center = float3(0.0, 0.0, -1.0);
 		spheres[0].radius = 0.5;
-		spheres[0].mat = lam;
+		spheres[0].mat = create_material_options();
+		spheres[0].mat.lambert = true;
+		spheres[0].mat.albedo = float3(0.8, 0.3, 0.3); // albedo
 
-		lam.albedo = float3(0.8, 0.6, 0.2);
 		spheres[1].center = float3(0.0, -100.5, -10.0);
 		spheres[1].radius = 100.0;
-		spheres[1].mat = lam;
+		spheres[1].mat = create_material_options();
+		spheres[1].mat.lambert = true;
+		spheres[1].mat.albedo = float3(0.6, 0.4, 0.2); // albedo
+	}
 
+	HitRecord hit(Ray r, float t_min, float t_max)
+	{
 		// Check for hits
 		HitRecord hit_rec;
 		hit_rec.hit = false;
@@ -229,60 +234,40 @@ class HitableManager
 	}
 };
 
-HitableManager hitable_manager;
-
-// ========================= Random unit in sphere function ===================================
-
-float3 random_in_unit_sphere(float2 randomizer)
-{
-	float3 p;
-	// Calculate random direction
-	p = (2.0 * 
-		float3(
-			rand(randomizer + float2(832.0, 0.0)), 
-			rand(randomizer + float2(0.0, 652.0)), 
-			rand(randomizer + float2(876.0, 324.0)))) -
-		float3(1, 1, 1);
-
-	return normalize(p);
-}
-
 // ================================= Color function =========================================
 
 struct ColorData
 {
-	float3 color;
-	Ray rebounce_ray;
-	bool rebounce;
+	MaterialHitRecord mat_hit;
 };
 
-ColorData color(Ray r, float2 randomizer)
+ColorData color(HitableManager hit_manager, Ray r, float2 randomizer)
 {
 	// Create color data to return
 	ColorData color_data;
-	color_data.rebounce = false;
-	color_data.color = float3(0.0, 0.0, 0.0);
 
 	// Create Hit record to record hit(s)
 	HitRecord rec;
 	rec.hit = false;
 
 	// Run hit manager
-	rec = (hitable_manager.hit(r, 0.001, 3E+38));
+	rec = (hit_manager.hit(r, 0.001, 3E+38));
 
 	// Check if hit was found
 	if (rec.hit)
 	{
-		// Create new ray for bounce
+		if (rec.mat.lambert)
+		{
+			color_data.mat_hit = lambertian_scatter(r, rec, rec.mat, randomizer);
+		}
+
 		float3 target = rec.p + rec.normal + random_in_unit_sphere(randomizer);
 		Ray rebounce_ray;
 		rebounce_ray.origin = rec.p;
 		rebounce_ray.direction = target;
 
-		// Bounce and return final color
-		color_data.rebounce = true;
-		color_data.rebounce_ray = rebounce_ray;
-		color_data.color = float3(0.1, 0.1, 0.5);
+		color_data.mat_hit.scatter_ray = rebounce_ray;
+
 		return color_data;
 	}
 	else
@@ -291,31 +276,34 @@ ColorData color(Ray r, float2 randomizer)
 		float3 n_dir = normalize(r.direction);
 		float t = 0.5 * (n_dir.y + 1.0);
 
-		// No bounce and return final color
-		color_data.rebounce = false;
-		color_data.color = (1.0 - t) * float3(1.0, 1.0, 1.0) + t * float3(0.5, 0.7, 1.0);
+		color_data.mat_hit.scatter_ray = r;
+		color_data.mat_hit.attenuation = (1.0 - t) * float3(1.0, 1.0, 1.0) + t * float3(0.5, 0.7, 1.0);
+		color_data.mat_hit.scattered = false;
+
 		return color_data;
 	}
 }
 
 // =================================== Handle bounces ============================================
 
-float4 handleBounces(ColorData color_data, float2 randomizer, float4 final_color)
+float4 handleBounces(HitableManager hit_manager, ColorData color_data, float2 randomizer, float4 final_color)
 {
-	for (int i = 0; color_data.rebounce; i++)
+	final_color = float4(color_data.mat_hit.attenuation.xyz, 1.0);
+
+	for (int i = 0; i < 50; i++)
 	{
 		randomizer += float2(812.0, 122.0);
-		color_data = color(color_data.rebounce_ray, randomizer);
+		color_data = color(hit_manager, color_data.mat_hit.scatter_ray, randomizer);
+		if (color_data.mat_hit.scattered)
+		{
+			final_color *= float4(color_data.mat_hit.attenuation.xyz, 1.0);
+		}
+		else
+		{
+			break;
+		}
 	}
 
-	final_color = float4(color_data.color.xyz, 1.0);
-
-	// i is the amount of bounces that happened
-	// Recursive calculations may happen here
-	if (i > 0)
-	{
-		final_color = pow(0.5, i);
-	}
 	return final_color;
 }
 
@@ -341,6 +329,10 @@ float4 main(VSOutput IN) : SV_Target
 	Camera cam;
 	cam.init();
 
+	// Create hitable manager
+	HitableManager hitable_manager;
+	hitable_manager.init();
+
 	float2 randomizer = float2(rand(uv), rand(uv));
 	for (int s = 0; s < MAX_SAMPLES; ++s)
 	{
@@ -352,10 +344,11 @@ float4 main(VSOutput IN) : SV_Target
 		Ray r = cam.get_ray(u, v);
 
 		// Get final color
-		ColorData color_data = color(r, randomizer);
-		float4 bounced_color = handleBounces(color_data, randomizer, final_color);
+		ColorData color_data = color(hitable_manager, r, randomizer);
+		float4 bounced_color = handleBounces(hitable_manager, color_data, randomizer, final_color);
 
 		//final_color += float4(color_data.color, 1.0);
+		//final_color += color_data.color;
 		final_color += bounced_color;
 
 		// Update randomizer		
