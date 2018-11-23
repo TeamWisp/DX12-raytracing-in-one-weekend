@@ -178,6 +178,13 @@ bool Demo2::LoadContent()
 	auto command_queue = app_->GetCommandQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	auto command_list = command_queue->GetCommandList();
 
+	XMFLOAT2 dims = XMFLOAT2(GetClientWidth() * 0.5f, GetClientHeight() * 0.5f);
+	for (size_t i = 0; i < _countof(g_vertices); ++i)
+	{
+		g_vertices[i].Position.x *= dims.x;
+		g_vertices[i].Position.y *= dims.y;
+	}
+
 	// Upload vertex pos buffer data.
 	ComPtr<ID3D12Resource> intermediate_vertex_buffer;
 	UpdateBufferResource(command_list.Get(),
@@ -482,8 +489,8 @@ void Demo2::OnUpdate(UpdateEventArgs& arg_e)
 	}
 
 	// Update the model matrix.
-	float angle = static_cast<float>(arg_e.TotalTime * 90.0);
-	const XMVECTOR rotation_axis = XMVectorSet(0, 1, 1, 0);
+	float angle = 0.f;
+	const XMVECTOR rotation_axis = XMVectorSet(1, 0, 0, 0);
 	model_matrix_ = XMMatrixRotationAxis(rotation_axis, XMConvertToRadians(angle));
 
 	// Update the view matrix.
@@ -494,7 +501,7 @@ void Demo2::OnUpdate(UpdateEventArgs& arg_e)
 
 	// Update the projection matrix.
 	float aspect_ratio = GetClientWidth() / static_cast<float>(GetClientHeight());
-	projection_matrix_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fov_), aspect_ratio, 0.1f, 100.0f);
+	projection_matrix_ = XMMatrixOrthographicLH(GetClientWidth(), GetClientHeight(), 0.1f, 100.0f);
 }
 
 void Demo2::OnRender(RenderEventArgs& arg_e)

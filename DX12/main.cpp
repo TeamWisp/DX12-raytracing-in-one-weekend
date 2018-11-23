@@ -36,7 +36,7 @@ int CALLBACK wWinMain(HINSTANCE arg_h_instance, HINSTANCE h_prev_instance, PWSTR
 	// Application constructor
 	Application app(arg_h_instance);
 	{
-		std::shared_ptr<Demo2> demo = std::make_shared<Demo2>(app, L"DirectX 12 Demo", 1280, 720);
+		std::shared_ptr<Demo2> demo = std::make_shared<Demo2>(app, L"DirectX 12 Demo", 1000, 500);
 
 		ret_code = app.Run(demo);
 	}
