@@ -228,7 +228,7 @@ float4 handleBounces(ColorData color_data, float2 randomizer, float4 final_color
 	for (int i = 0; color_data.rebounce; i++)
 	{
 		randomizer += float2(812.0, 122.0);
-		final_color = final_color * 0.5;
+		final_color = 0.5 * final_color;
 		color_data = color(color_data.rebounce_ray, randomizer);
 	}
 	return final_color;
