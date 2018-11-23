@@ -3,7 +3,7 @@
 
 #define NUM_SPHERES 2
 
-#define MAX_SAMPLES 100
+#define MAX_SAMPLES 50
 #define MAX_SAMPLE_OFFSET 1.0
 #define SAMPLE_FACTOR (MAX_SAMPLE_OFFSET / 2.0)
 
@@ -26,7 +26,7 @@ float rand(float2 co)
 
 // ==================================== Ray class =========================================
 
-struct Ray
+class Ray
 {
 	float3 origin;
 	float3 direction;
@@ -38,7 +38,7 @@ struct Ray
 
 // ================================== Camera class =========================================
 
-struct Camera
+class Camera
 {
 	float3 origin;
 	float3 lower_left_corner;
@@ -62,7 +62,7 @@ struct Camera
 	}
 };
 
-// ========================= HitRecord & Hitable Geometry classes =================================
+// ================================= HitRecord class ==========================================
 
 struct HitRecord
 {
@@ -72,7 +72,9 @@ struct HitRecord
 	bool hit;
 };
 
-struct HitableSphere
+// ============================== Hitable Geometry classes ===================================
+
+class HitableSphere
 {
 	float3 center;
 	float radius;
@@ -118,7 +120,7 @@ struct HitableSphere
 
 // ================================ Hitable Manager class ============================================
 
-struct HitableManager
+class HitableManager
 {
 	HitRecord hit(Ray r, float t_min, float t_max)
 	{
@@ -216,20 +218,25 @@ ColorData color(Ray r, float2 randomizer)
 		color_data.color = (1.0 - t) * float3(1.0, 1.0, 1.0) + t * float3(0.5, 0.7, 1.0);
 		return color_data;
 	}
-	// Return color data
 }
 
-// =================================== MAIN ============================================
+// =================================== Handle bounces ============================================
 
 float4 handleBounces(ColorData color_data, float2 randomizer, float4 final_color)
 {
-	final_color = float4(color_data.color.xyz, 1.0);
-
 	for (int i = 0; color_data.rebounce; i++)
 	{
 		randomizer += float2(812.0, 122.0);
-		final_color = 0.5 * final_color;
 		color_data = color(color_data.rebounce_ray, randomizer);
+	}
+
+	final_color = float4(color_data.color.xyz, 1.0);
+
+	// i is the amount of bounces that happened
+	// Recursive calculations may happen here
+	if (i > 0)
+	{
+		final_color = pow(0.5, i);
 	}
 	return final_color;
 }
