@@ -1,9 +1,9 @@
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 500
 
-#define NUM_SPHERES 2
+#define NUM_SPHERES 4
 
-#define MAX_SAMPLES 50
+#define MAX_SAMPLES 10
 #define MAX_SAMPLE_OFFSET 1.0
 #define SAMPLE_FACTOR (MAX_SAMPLE_OFFSET / 2.0)
 
@@ -171,15 +171,15 @@ float3 random_in_unit_sphere(float2 randomizer)
 
 // ================================== Material functions =============================================
 
-MaterialHitRecord lambertian_scatter(Ray r, HitRecord rec_hit, MaterialOptions options, float2 randomizer)
+MaterialHitRecord lambertian_scatter(Ray r, HitRecord hit_rec, MaterialOptions options, float2 randomizer)
 {
 	// Create MaterialHitRecord
 	MaterialHitRecord mat_hit;
 
 	// Setup scattered ray
-	float3 target = rec_hit.p + rec_hit.normal + random_in_unit_sphere(randomizer);
+	float3 target = hit_rec.p + hit_rec.normal + random_in_unit_sphere(randomizer);
 	Ray ray;
-	ray.origin = rec_hit.p;
+	ray.origin = hit_rec.p;
 	ray.direction = target;
 	mat_hit.scatter_ray = ray;
 
@@ -187,6 +187,26 @@ MaterialHitRecord lambertian_scatter(Ray r, HitRecord rec_hit, MaterialOptions o
 	mat_hit.attenuation = options.albedo;
 
 	mat_hit.scattered = true;
+
+	// Return scattered ray data
+	return mat_hit;
+}
+
+MaterialHitRecord metal_scatter(Ray r, HitRecord hit_rec, MaterialOptions options, float2 randomizer)
+{
+	// Create MaterialHitRecord
+	MaterialHitRecord mat_hit;
+
+	// Setup scattered ray
+	Ray ray;
+	ray.origin = hit_rec.p;
+	ray.direction = reflect(normalize(r.direction), hit_rec.normal);
+	mat_hit.scatter_ray = ray;
+
+	// Set attenuation
+	mat_hit.attenuation = options.albedo;
+
+	mat_hit.scattered = (dot(ray.direction, hit_rec.normal) > 0);
 
 	// Return scattered ray data
 	return mat_hit;
@@ -207,11 +227,23 @@ class HitableManager
 		spheres[0].mat.lambert = true;
 		spheres[0].mat.albedo = float3(0.8, 0.3, 0.3); // albedo
 
-		spheres[1].center = float3(0.0, -100.5, -10.0);
-		spheres[1].radius = 100.0;
+		spheres[3].center = float3(0.0, -100.5, -10.0);
+		spheres[3].radius = 100.0;
+		spheres[3].mat = create_material_options();
+		spheres[3].mat.metal = true;
+		spheres[3].mat.albedo = float3(0.8, 0.8, 0.0); // albedo
+
+		spheres[2].center = float3(1.0, 0.0, -1.0);
+		spheres[2].radius = 0.5;
+		spheres[2].mat = create_material_options();
+		spheres[2].mat.lambert = true;
+		spheres[2].mat.albedo = float3(0.8, 0.6, 0.2); // albedo
+
+		spheres[1].center = float3(-1.0, 0.0, -1.0);
+		spheres[1].radius = 0.5;
 		spheres[1].mat = create_material_options();
 		spheres[1].mat.lambert = true;
-		spheres[1].mat.albedo = float3(0.6, 0.4, 0.2); // albedo
+		spheres[1].mat.albedo = float3(0.8, 0.8, 0.8); // albedo
 	}
 
 	HitRecord hit(Ray r, float t_min, float t_max)
@@ -259,6 +291,11 @@ ColorData color(HitableManager hit_manager, Ray r, float2 randomizer)
 		if (rec.mat.lambert)
 		{
 			color_data.mat_hit = lambertian_scatter(r, rec, rec.mat, randomizer);
+		}
+		else if (rec.mat.metal)
+		{
+			color_data.mat_hit = metal_scatter(r, rec, rec.mat, randomizer);
+			
 		}
 
 		return color_data;
